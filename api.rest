@@ -1,0 +1,200 @@
+### Variables
+@baseUrl = http://localhost:3000/api
+@prodUrl = https://dev-api-test.x1.stage.hostnmeet.com/api
+@token = YOUR_JWT_TOKEN_HERE
+
+### Health Check
+GET https://dev-api-test.x1.stage.hostnmeet.com/health
+
+### ===== AUTH ENDPOINTS =====
+
+### Register User
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "email": "test@example.com",
+  "password": "Test123",
+  "name": "Test User"
+}
+
+### Login User
+POST {{prodUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "test@example.com",
+  "password": "Test123"
+}
+
+### Google Auth
+POST {{prodUrl}}/auth/google
+Content-Type: application/json
+
+{
+  "idToken": "eyJhbGciOiJSUzI1NiIsImtpZCI6ImMyN2JhNDBiMDk1MjlhZDRmMTY4MjJjZTgzMTY3YzFiYzM5MTAxMjIiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2FjY291bnRzLmdvb2dsZS5jb20iLCJhenAiOiI0MDc0MDg3MTgxOTIuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJhdWQiOiI0MDc0MDg3MTgxOTIuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJzdWIiOiIxMDM0NTI5MDY2NzM3MTU0NzEyODEiLCJlbWFpbCI6Imdva3VsYXQ4QGdtYWlsLmNvbSIsImVtYWlsX3ZlcmlmaWVkIjp0cnVlLCJhdF9oYXNoIjoibDc1VE1qaURtQ1RIVndMSXpmV3h5QSIsImlhdCI6MTc3MDcxNjg4MCwiZXhwIjoxNzcwNzIwNDgwfQ.AuSiVV6Yj0Ygq0rAkPrG-ah-FGi1ol4gpzrcZLV5ChodvR5WCAnjTRmuZUhaXaDrVWWYuv6VaPKBw2wVFOlF6rKF1tO_tjTESUsN9uyyTE5OZBsc4HcJOhT0YigW8GctsY36RoYovYnLODNyeBnBmqXxmH_egs-58KR9Qg25fltOFIT6IGPwYueVa6KYXDv63KULmgk0l5GvPfjYjsxz7LjXb3N_g56_Hd7WaH4ouNVrOw09WSN2EVZF2rfdnSZHpSyXh24E1_vmlfVGJIxW6f-Mxvm-jApBtvXQTlDJaSjScJkh3gKPwy_2d5Z0hFRZrnZpVrK6EDpCO6IxN--ldQ"
+}
+
+### Get Current User
+GET {{baseUrl}}/auth/me
+Authorization: Bearer {{token}}
+
+### ===== PROMPT ENDPOINTS =====
+
+### Get All Prompts
+GET {{baseUrl}}/prompts?page=1&limit=10
+
+### Get Trending Prompts
+GET {{baseUrl}}/prompts/trending
+
+### Get Prompt by ID
+GET {{baseUrl}}/prompts/676f5bd398f8ba8b4a09d7b1
+
+### Search Prompts
+GET {{baseUrl}}/prompts/search?q=cyberpunk&type=image&platform=midjourney
+
+### Filter Prompts
+GET {{baseUrl}}/prompts/filter?category=art&minViralScore=80
+
+### Get Prompts by Platform
+GET {{baseUrl}}/prompts/platform/midjourney
+
+### Get Prompts by AI Tool
+GET {{baseUrl}}/prompts/ai-tool/dalle
+
+### Create Prompt (Auth Required)
+POST {{baseUrl}}/prompts
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "text": "A majestic dragon flying over mountains at sunset, cinematic lighting, 8K",
+  "type": "image",
+  "category": "art",
+  "platform": "midjourney",
+  "aiTool": "midjourney",
+  "tags": ["dragon", "mountains", "sunset", "fantasy"],
+  "viralScore": 85
+}
+
+### Update Prompt (Auth Required)
+PUT {{baseUrl}}/prompts/676f5bd398f8ba8b4a09d7b1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "text": "Updated prompt text",
+  "viralScore": 90
+}
+
+### Delete Prompt (Auth Required)
+DELETE {{baseUrl}}/prompts/676f5bd398f8ba8b4a09d7b1
+Authorization: Bearer {{token}}
+
+### ===== VIRAL CHAT ENDPOINTS =====
+
+### Get All Viral Chats
+GET {{baseUrl}}/viral-chats?page=1&limit=10
+
+### Get Trending Viral Chats
+GET {{baseUrl}}/viral-chats/trending
+
+### Get Viral Chat by ID
+GET {{baseUrl}}/viral-chats/676f5bd398f8ba8b4a09d7c1
+
+### Search Viral Chats
+GET {{baseUrl}}/viral-chats/search?q=funny&category=humor
+
+### Get Chats by Category
+GET {{baseUrl}}/viral-chats/category/funny
+
+### Create Viral Chat (Auth Required)
+POST {{baseUrl}}/viral-chats
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "title": "The Sarcastic Assistant",
+  "promptText": "You are an AI assistant who responds to everything with heavy sarcasm and witty comebacks.",
+  "category": "funny",
+  "tags": ["humor", "sarcasm", "witty"]
+}
+
+### Update Viral Chat (Auth Required)
+PUT {{baseUrl}}/viral-chats/676f5bd398f8ba8b4a09d7c1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "title": "Updated Title",
+  "promptText": "Updated prompt text"
+}
+
+### Delete Viral Chat (Auth Required)
+DELETE {{baseUrl}}/viral-chats/676f5bd398f8ba8b4a09d7c1
+Authorization: Bearer {{token}}
+
+### ===== USER ENDPOINTS =====
+
+### Get User Profile
+GET {{baseUrl}}/users/profile
+Authorization: Bearer {{token}}
+
+### Update User Profile
+PUT {{baseUrl}}/users/profile
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Updated Name",
+  "bio": "This is my bio"
+}
+
+### Get User's Saved Prompts
+GET {{baseUrl}}/users/saved-prompts
+Authorization: Bearer {{token}}
+
+### Save a Prompt
+POST {{baseUrl}}/users/saved-prompts/676f5bd398f8ba8b4a09d7b1
+Authorization: Bearer {{token}}
+
+### Remove Saved Prompt
+DELETE {{baseUrl}}/users/saved-prompts/676f5bd398f8ba8b4a09d7b1
+Authorization: Bearer {{token}}
+
+### Get User's Created Prompts
+GET {{baseUrl}}/users/my-prompts
+Authorization: Bearer {{token}}
+
+### ===== ADMIN ENDPOINTS =====
+
+### Admin Login
+POST {{baseUrl}}/admin/login
+Content-Type: application/json
+
+{
+  "adminKey": "dfjkgtngtgj845fgu54ng"
+}
+
+### Get All Users (Admin)
+GET {{baseUrl}}/admin/users
+Authorization: Bearer {{token}}
+
+### Delete User (Admin)
+DELETE {{baseUrl}}/admin/users/USER_ID_HERE
+Authorization: Bearer {{token}}
+
+### Get Platform Stats (Admin)
+GET {{baseUrl}}/admin/stats
+Authorization: Bearer {{token}}
+
+### ===== PRODUCTION TESTS =====
+
+### Production Health Check
+GET https://dev-api-test.x1.stage.hostnmeet.com/health
+
+### Production Get Prompts
+GET {{prodUrl}}/prompts?page=1&limit=5
+
+### Production Get Trending
+GET {{prodUrl}}/prompts/trending
