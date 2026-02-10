@@ -25,18 +25,20 @@ const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 
 // Connect to MongoDB
-connectDB();
+connectDB().catch((err) => {
+  console.error("❌ MongoDB connection failed", err);
+  process.exit(1);
+});
 
 // Middleware
 app.use(helmet());
 app.use(
   cors({
-    origin:
-      process.env.NODE_ENV === "production" ? ["https://yourapp.com"] : "*",
+    origin: true,
     credentials: true,
   }),
 );
-app.use(express.json({ limit: "10mb" }));
+app.use(express.json({ limit: "100mb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan("dev"));
 
