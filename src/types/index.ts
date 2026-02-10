@@ -87,6 +87,71 @@ export interface ViralChat {
   trendScore: number;
 }
 
+// Cluster Types (for viral prompt discovery)
+export type ClusterStatus = 'emerging' | 'trending' | 'viral' | 'stable' | 'declining';
+
+export interface ClusterVisualFeatures {
+  subjects: string[];
+  emotion: string[];
+  style: string[];
+  motion: string[];
+  environment: string[];
+}
+
+export interface ClusterMetrics {
+  creatorCount: number;
+  platformCount: number;
+  avgEngagementVelocity: number;
+  totalPosts: number;
+  totalLikes: number;
+  totalViews: number;
+}
+
+export interface Cluster {
+  id: string;
+  mediaType: 'image' | 'video';
+  name?: string;
+  
+  // Visual features
+  visualFeatures: ClusterVisualFeatures;
+  
+  // Metrics
+  metrics: ClusterMetrics;
+  
+  // Trend info
+  trendScore: number;
+  status: ClusterStatus;
+  
+  // Generated prompt
+  generatedPrompt: string;
+  
+  // Platforms
+  platforms: Platform[];
+  
+  // Timestamps
+  createdAt: string;
+  updatedAt: string;
+  
+  // Approval
+  isApproved: boolean;
+}
+
+export interface ClusterPost {
+  id: string;
+  platform: Platform;
+  sourceUrl: string;
+  mediaType: 'image' | 'video';
+  mediaUrl?: string;
+  thumbnailUrl?: string;
+  caption: string;
+  title?: string;
+  engagementVelocity: number;
+  likes: number;
+  views: number;
+  creatorUsername?: string;
+  publishedAt: string;
+}
+
 export interface UserReaction {
   promptId: string;
   reaction: ReactionType;

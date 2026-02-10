@@ -2,7 +2,7 @@
  * API Service - Backend communication
  */
 
-import { Prompt, ViralChat, User, ApiResponse } from "@/types";
+import { Prompt, ViralChat, User, ApiResponse, Cluster, ClusterPost } from "@/types";
 
 const API_BASE_URL =
   process.env.EXPO_PUBLIC_API_URL ||
@@ -231,6 +231,80 @@ class ApiService {
     period: "day" | "week" | "month",
   ): Promise<ApiResponse<any>> {
     return this.request(`/analytics/charts/${type}?period=${period}`);
+  }
+
+  // ============ CLUSTERS ============
+
+  async getClusters(params: {
+    page?: number;
+    limit?: number;
+    status?: 'emerging' | 'trending' | 'viral' | 'stable' | 'declining';
+    mediaType?: 'image' | 'video';
+    sort?: 'trendScore' | 'recent' | 'posts';
+    approved?: boolean;
+  }): Promise<ApiResponse<{ clusters: Cluster[]; total: number; page: number }>> {
+    const searchParams = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined) {
+        searchParams.append(key, String(value));
+      }
+    });
+
+    return this.request(`/clusters?${searchParams.toString()}`);
+  }
+
+  async getTrendingClusters(
+    mediaType?: 'image' | 'video',
+    limit = 10,
+  ): Promise<ApiResponse<Cluster[]>> {
+    const params = new URLSearchParams({ limit: String(limit) });
+    if (mediaType) params.append('mediaType', mediaType);
+    return this.request(`/clusters/trending?${params.toString()}`);
+  }
+
+  async getViralClusters(
+    mediaType?: 'image' | 'video',
+    limit = 10,
+  ): Promise<ApiResponse<Cluster[]>> {
+    const params = new URLSearchParams({ limit: String(limit) });
+    if (mediaType) params.append('mediaType', mediaType);
+    return this.request(`/clusters/viral?${params.toString()}`);
+  }
+
+  async getEmergingClusters(
+    mediaType?: 'image' | 'video',
+    limit = 10,
+  ): Promise<ApiResponse<Cluster[]>> {
+    const params = new URLSearchParams({ limit: String(limit) });
+    if (mediaType) params.append('mediaType', mediaType);
+    return this.request(`/clusters/emerging?${params.toString()}`);
+  }
+
+  async getClusterById(id: string): Promise<ApiResponse<Cluster>> {
+    return this.request(`/clusters/${id}`);
+  }
+
+  async getClusterPosts(
+    clusterId: string,
+    page = 1,
+  ): Promise<ApiResponse<{ posts: ClusterPost[]; total: number }>> {
+    return this.request(`/clusters/${clusterId}/posts?page=${page}`);
+  }
+
+  async getClusterStats(): Promise<ApiResponse<{
+    totals: {
+      clusters: number;
+      viral: number;
+      trending: number;
+      emerging: number;
+    };
+    byMediaType: {
+      image: number;
+      video: number;
+    };
+    platformDistribution: Array<{ platform: string; count: number }>;
+  }>> {
+    return this.request('/clusters/stats/overview');
   }
 }
 

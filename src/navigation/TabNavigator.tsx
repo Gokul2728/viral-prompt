@@ -12,6 +12,7 @@ import { Colors, Spacing } from '@/theme';
 import {
   HomeScreen,
   TrendingScreen,
+  ClustersScreen,
   ViralChatScreen,
   ProfileScreen,
 } from '@/screens';
@@ -104,6 +105,16 @@ export const TabNavigator: React.FC = () => {
           tabBarLabel: 'Trending',
           tabBarIcon: ({ focused, color, size }) => (
             <TabIcon name="flame" focused={focused} color={color} size={size} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Clusters"
+        component={ClustersScreen}
+        options={{
+          tabBarLabel: 'Clusters',
+          tabBarIcon: ({ focused, color, size }) => (
+            <TabIcon name="grid" focused={focused} color={color} size={size} />
           ),
         }}
       />

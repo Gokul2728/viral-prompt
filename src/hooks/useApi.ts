@@ -6,7 +6,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { apiService } from '@/services/api';
 import { databaseService } from '@/services/database';
 import { useAppStore } from '@/store';
-import type { Prompt, ViralChat } from '@/types';
+import type { Prompt, ViralChat, Cluster, ClusterPost } from '@/types';
 
 const db = databaseService;
 
@@ -438,6 +438,312 @@ export function useSavedPrompts(): UseFetchResult<Prompt[]> {
   return { data, loading, error, refetch };
 }
 
+// ============ Clusters Hooks ============
+
+interface UseClustersParams {
+  page?: number;
+  limit?: number;
+  status?: 'emerging' | 'trending' | 'viral' | 'stable' | 'declining';
+  mediaType?: 'image' | 'video';
+  sort?: 'trendScore' | 'recent' | 'posts';
+}
+
+export function useClusters(params: UseClustersParams = {}): UseFetchResult<Cluster[]> & {
+  total: number;
+  loadMore: () => void;
+  hasMore: boolean;
+} {
+  const [data, setData] = useState<Cluster[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [total, setTotal] = useState(0);
+  const [currentPage, setCurrentPage] = useState(params.page || 1);
+  const [hasMore, setHasMore] = useState(true);
+  const isOnline = useAppStore((state) => state.isOnline);
+
+  const fetchClusters = useCallback(async (page = 1, append = false) => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      if (isOnline) {
+        const response = await apiService.getClusters({
+          page,
+          limit: params.limit || 20,
+          status: params.status,
+          mediaType: params.mediaType,
+          sort: params.sort || 'trendScore',
+          approved: true,
+        });
+
+        if (response.success && response.data) {
+          const clusters = response.data.clusters || [];
+          if (append) {
+            setData((prev) => [...prev, ...clusters]);
+          } else {
+            setData(clusters);
+          }
+          setTotal(response.data.total || clusters.length);
+          setHasMore(clusters.length >= (params.limit || 20));
+        } else {
+          throw new Error(response.error || 'Failed to fetch clusters');
+        }
+      } else {
+        setData([]);
+        setHasMore(false);
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      setError(message);
+      setData([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [isOnline, params.status, params.mediaType, params.sort, params.limit]);
+
+  const refetch = useCallback(async () => {
+    setCurrentPage(1);
+    await fetchClusters(1, false);
+  }, [fetchClusters]);
+
+  const loadMore = useCallback(() => {
+    if (!loading && hasMore) {
+      const nextPage = currentPage + 1;
+      setCurrentPage(nextPage);
+      fetchClusters(nextPage, true);
+    }
+  }, [loading, hasMore, currentPage, fetchClusters]);
+
+  useEffect(() => {
+    fetchClusters(1, false);
+  }, []);
+
+  return { data, loading, error, refetch, total, loadMore, hasMore };
+}
+
+export function useTrendingClusters(mediaType?: 'image' | 'video', limit = 10): UseFetchResult<Cluster[]> {
+  const [data, setData] = useState<Cluster[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const isOnline = useAppStore((state) => state.isOnline);
+
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      if (isOnline) {
+        const response = await apiService.getTrendingClusters(mediaType, limit);
+        if (response.success && response.data) {
+          setData(response.data);
+        } else {
+          throw new Error(response.error || 'Failed to fetch trending clusters');
+        }
+      } else {
+        setData([]);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unknown error');
+    } finally {
+      setLoading(false);
+    }
+  }, [isOnline, mediaType, limit]);
+
+  const refetch = useCallback(async () => {
+    await fetchData();
+  }, [fetchData]);
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  return { data, loading, error, refetch };
+}
+
+export function useViralClusters(mediaType?: 'image' | 'video', limit = 10): UseFetchResult<Cluster[]> {
+  const [data, setData] = useState<Cluster[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const isOnline = useAppStore((state) => state.isOnline);
+
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      if (isOnline) {
+        const response = await apiService.getViralClusters(mediaType, limit);
+        if (response.success && response.data) {
+          setData(response.data);
+        } else {
+          throw new Error(response.error || 'Failed to fetch viral clusters');
+        }
+      } else {
+        setData([]);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unknown error');
+    } finally {
+      setLoading(false);
+    }
+  }, [isOnline, mediaType, limit]);
+
+  const refetch = useCallback(async () => {
+    await fetchData();
+  }, [fetchData]);
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  return { data, loading, error, refetch };
+}
+
+export function useEmergingClusters(mediaType?: 'image' | 'video', limit = 10): UseFetchResult<Cluster[]> {
+  const [data, setData] = useState<Cluster[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const isOnline = useAppStore((state) => state.isOnline);
+
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      if (isOnline) {
+        const response = await apiService.getEmergingClusters(mediaType, limit);
+        if (response.success && response.data) {
+          setData(response.data);
+        } else {
+          throw new Error(response.error || 'Failed to fetch emerging clusters');
+        }
+      } else {
+        setData([]);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unknown error');
+    } finally {
+      setLoading(false);
+    }
+  }, [isOnline, mediaType, limit]);
+
+  const refetch = useCallback(async () => {
+    await fetchData();
+  }, [fetchData]);
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  return { data, loading, error, refetch };
+}
+
+export function useClusterById(clusterId: string): UseFetchResult<Cluster> {
+  const [data, setData] = useState<Cluster | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const isOnline = useAppStore((state) => state.isOnline);
+
+  const fetchData = useCallback(async () => {
+    if (!clusterId) return;
+    
+    setLoading(true);
+    setError(null);
+
+    try {
+      if (isOnline) {
+        const response = await apiService.getClusterById(clusterId);
+        if (response.success && response.data) {
+          setData(response.data);
+        } else {
+          throw new Error(response.error || 'Failed to fetch cluster');
+        }
+      } else {
+        setError('Offline - cluster data not available');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unknown error');
+    } finally {
+      setLoading(false);
+    }
+  }, [clusterId, isOnline]);
+
+  const refetch = useCallback(async () => {
+    await fetchData();
+  }, [fetchData]);
+
+  useEffect(() => {
+    fetchData();
+  }, [clusterId]);
+
+  return { data, loading, error, refetch };
+}
+
+export function useClusterPosts(clusterId: string): UseFetchResult<ClusterPost[]> & {
+  total: number;
+  loadMore: () => void;
+  hasMore: boolean;
+} {
+  const [data, setData] = useState<ClusterPost[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [total, setTotal] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const isOnline = useAppStore((state) => state.isOnline);
+
+  const fetchData = useCallback(async (page = 1, append = false) => {
+    if (!clusterId) return;
+    
+    setLoading(true);
+    setError(null);
+
+    try {
+      if (isOnline) {
+        const response = await apiService.getClusterPosts(clusterId, page);
+        if (response.success && response.data) {
+          const posts = response.data.posts || [];
+          if (append) {
+            setData((prev) => [...prev, ...posts]);
+          } else {
+            setData(posts);
+          }
+          setTotal(response.data.total || posts.length);
+          setHasMore(posts.length >= 20);
+        } else {
+          throw new Error(response.error || 'Failed to fetch cluster posts');
+        }
+      } else {
+        setData([]);
+        setHasMore(false);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unknown error');
+    } finally {
+      setLoading(false);
+    }
+  }, [clusterId, isOnline]);
+
+  const refetch = useCallback(async () => {
+    setCurrentPage(1);
+    await fetchData(1, false);
+  }, [fetchData]);
+
+  const loadMore = useCallback(() => {
+    if (!loading && hasMore) {
+      const nextPage = currentPage + 1;
+      setCurrentPage(nextPage);
+      fetchData(nextPage, true);
+    }
+  }, [loading, hasMore, currentPage, fetchData]);
+
+  useEffect(() => {
+    fetchData(1, false);
+  }, [clusterId]);
+
+  return { data, loading, error, refetch, total, loadMore, hasMore };
+}
+
 export default {
   usePrompts,
   usePromptById,
@@ -445,4 +751,10 @@ export default {
   useViralChats,
   useSearch,
   useSavedPrompts,
+  useClusters,
+  useTrendingClusters,
+  useViralClusters,
+  useEmergingClusters,
+  useClusterById,
+  useClusterPosts,
 };

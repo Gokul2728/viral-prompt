@@ -6,6 +6,7 @@ export { GlassCard, GlassCardBlur } from "./GlassCard";
 export { Button, IconButton, ReactionButton } from "./Button";
 export { PromptCard, PromptCardMini } from "./PromptCard";
 export { ViralChatCard, ViralChatCardMini } from "./ViralChatCard";
+export { ClusterCard } from "./ClusterCard";
 export { Header } from "./Header";
 export { ChipFilter } from "./ChipFilter";
 export { FeedbackSlider } from "./FeedbackSlider";

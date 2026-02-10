@@ -16,7 +16,9 @@ import userRoutes from "./routes/user";
 import notificationRoutes from "./routes/notifications";
 import analyticsRoutes from "./routes/analytics";
 import adminRoutes from "./routes/admin";
+import clusterRoutes from "./routes/clusters";
 import { errorHandler } from "./middleware/errorHandler";
+import { scheduleWeeklyJob, scheduleDailyViralCheck } from "./jobs";
 
 // Load environment variables
 dotenv.config();
@@ -86,6 +88,7 @@ app.use("/api/user", userRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/analytics", analyticsRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/clusters", clusterRoutes);
 
 // Error handling
 app.use(errorHandler);
@@ -99,6 +102,13 @@ app.use((req, res) => {
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📊 Environment: ${process.env.NODE_ENV || "development"}`);
+  
+  // Schedule cron jobs in production
+  if (process.env.NODE_ENV === "production") {
+    scheduleWeeklyJob();
+    scheduleDailyViralCheck();
+    console.log("📅 Cron jobs scheduled");
+  }
 });
 
 export default app;

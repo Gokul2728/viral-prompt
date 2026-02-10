@@ -298,16 +298,16 @@ router.post('/:id/react', authenticate, async (req: AuthRequest, res: Response, 
 
 /**
  * POST /api/prompts/:id/feedback
- * Submit feedback for a prompt
+ * Submit feedback for a prompt (optional auth - guests can submit too)
  */
-router.post('/:id/feedback', authenticate, async (req: AuthRequest, res: Response, next) => {
+router.post('/:id/feedback', optionalAuth, async (req: AuthRequest, res: Response, next) => {
   try {
     const { usefulness, viralPotential, quality, comment } = req.body;
     
     // Store feedback (could create a separate Feedback model)
     console.log('Feedback received:', {
       promptId: req.params.id,
-      userId: req.userId,
+      userId: req.userId || 'anonymous',
       usefulness,
       viralPotential,
       quality,

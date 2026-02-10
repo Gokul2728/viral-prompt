@@ -3,9 +3,10 @@
  */
 
 import { Router, Response } from 'express';
-import { Prompt, ViralChat, User, Notification } from '../models';
+import { Prompt, ViralChat, User, Notification, Cluster, Post } from '../models';
 import { authenticate, requireAdmin, AuthRequest } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
+import { runWeeklyJob, publishApprovedClusters, sendViralNotifications } from '../jobs';
 
 const router = Router();
 
@@ -432,6 +433,380 @@ router.post('/notifications/broadcast', async (req: AuthRequest, res: Response, 
     res.json({
       success: true,
       message: `Notification sent to ${users.length} users`,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ========================================
+// CLUSTER MANAGEMENT ROUTES
+// ========================================
+
+/**
+ * GET /api/admin/clusters
+ * Get all clusters with admin details
+ */
+router.get('/clusters', async (req: AuthRequest, res: Response, next) => {
+  try {
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 50;
+    const skip = (page - 1) * limit;
+    const { status, approved } = req.query;
+
+    const query: Record<string, unknown> = {};
+    if (status) query.status = status;
+    if (approved !== undefined) query.isApproved = approved === 'true';
+
+    const [clusters, total] = await Promise.all([
+      Cluster.find(query)
+        .sort({ trendScore: -1, createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      Cluster.countDocuments(query),
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        clusters: clusters.map(c => ({ ...c, id: c._id })),
+        total,
+        page,
+        totalPages: Math.ceil(total / limit),
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * GET /api/admin/clusters/pending
+ * Get clusters pending approval
+ */
+router.get('/clusters/pending', async (req: AuthRequest, res: Response, next) => {
+  try {
+    const clusters = await Cluster.find({
+      isApproved: false,
+      isRejected: false,
+    })
+      .sort({ trendScore: -1 })
+      .limit(50)
+      .lean();
+
+    res.json({
+      success: true,
+      data: clusters.map(c => ({ ...c, id: c._id })),
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * PUT /api/admin/clusters/:id/approve
+ * Approve a cluster
+ */
+router.put('/clusters/:id/approve', async (req: AuthRequest, res: Response, next) => {
+  try {
+    const cluster = await Cluster.findByIdAndUpdate(
+      req.params.id,
+      {
+        isApproved: true,
+        approvedBy: req.userId,
+        approvedAt: new Date(),
+        isRejected: false,
+        rejectionReason: null,
+      },
+      { new: true }
+    );
+
+    if (!cluster) {
+      throw new AppError('Cluster not found', 404);
+    }
+
+    res.json({
+      success: true,
+      data: { ...cluster.toObject(), id: cluster._id },
+      message: 'Cluster approved',
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * PUT /api/admin/clusters/:id/reject
+ * Reject a cluster
+ */
+router.put('/clusters/:id/reject', async (req: AuthRequest, res: Response, next) => {
+  try {
+    const { reason } = req.body;
+
+    const cluster = await Cluster.findByIdAndUpdate(
+      req.params.id,
+      {
+        isRejected: true,
+        rejectionReason: reason || 'No reason provided',
+        isApproved: false,
+      },
+      { new: true }
+    );
+
+    if (!cluster) {
+      throw new AppError('Cluster not found', 404);
+    }
+
+    res.json({
+      success: true,
+      data: { ...cluster.toObject(), id: cluster._id },
+      message: 'Cluster rejected',
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * PUT /api/admin/clusters/:id
+ * Update cluster details
+ */
+router.put('/clusters/:id', async (req: AuthRequest, res: Response, next) => {
+  try {
+    const { name, generatedPrompt, status } = req.body;
+    const updates: Record<string, unknown> = {};
+    
+    if (name) updates.name = name;
+    if (generatedPrompt) updates.generatedPrompt = generatedPrompt;
+    if (status) updates.status = status;
+
+    const cluster = await Cluster.findByIdAndUpdate(
+      req.params.id,
+      { $set: updates },
+      { new: true }
+    );
+
+    if (!cluster) {
+      throw new AppError('Cluster not found', 404);
+    }
+
+    res.json({
+      success: true,
+      data: { ...cluster.toObject(), id: cluster._id },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * DELETE /api/admin/clusters/:id
+ * Delete a cluster
+ */
+router.delete('/clusters/:id', async (req: AuthRequest, res: Response, next) => {
+  try {
+    const cluster = await Cluster.findByIdAndDelete(req.params.id);
+
+    if (!cluster) {
+      throw new AppError('Cluster not found', 404);
+    }
+
+    // Unset clusterId from associated posts
+    await Post.updateMany(
+      { clusterId: cluster._id },
+      { $unset: { clusterId: 1 }, $set: { processed: false } }
+    );
+
+    res.json({
+      success: true,
+      message: 'Cluster deleted',
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * POST /api/admin/clusters/:id/publish
+ * Publish cluster as a prompt
+ */
+router.post('/clusters/:id/publish', async (req: AuthRequest, res: Response, next) => {
+  try {
+    const cluster = await Cluster.findById(req.params.id).populate('representativePostId');
+
+    if (!cluster) {
+      throw new AppError('Cluster not found', 404);
+    }
+
+    if (!cluster.isApproved) {
+      throw new AppError('Cluster must be approved before publishing', 400);
+    }
+
+    if (cluster.publishedAsPromptId) {
+      throw new AppError('Cluster already published', 400);
+    }
+
+    const representativePost = cluster.representativePostId as unknown as typeof Post.prototype;
+
+    const prompt = await Prompt.create({
+      text: cluster.generatedPrompt,
+      type: cluster.mediaType,
+      previewUrl: representativePost?.thumbnailUrl || representativePost?.mediaUrl,
+      previewType: cluster.mediaType,
+      platforms: cluster.platforms,
+      aiTools: [],
+      tags: [
+        ...cluster.visualFeatures.subjects.slice(0, 5),
+        ...cluster.visualFeatures.style.slice(0, 3),
+      ],
+      style: cluster.visualFeatures.style[0],
+      emotion: cluster.visualFeatures.emotion[0],
+      trendScore: cluster.trendScore,
+      firstSeenAt: cluster.createdAt,
+      crossPlatformCount: cluster.metrics.platformCount,
+      creatorCount: cluster.metrics.creatorCount,
+      engagementVelocity: cluster.metrics.avgEngagementVelocity,
+      clusterId: cluster._id.toString(),
+      isApproved: true,
+    });
+
+    cluster.publishedAsPromptId = prompt._id;
+    await cluster.save();
+
+    res.json({
+      success: true,
+      data: { ...prompt.toObject(), id: prompt._id },
+      message: 'Cluster published as prompt',
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ========================================
+// POSTS MANAGEMENT ROUTES
+// ========================================
+
+/**
+ * GET /api/admin/posts
+ * Get all scraped posts
+ */
+router.get('/posts', async (req: AuthRequest, res: Response, next) => {
+  try {
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 50;
+    const skip = (page - 1) * limit;
+    const { platform, processed } = req.query;
+
+    const query: Record<string, unknown> = {};
+    if (platform) query.platform = platform;
+    if (processed !== undefined) query.processed = processed === 'true';
+
+    const [posts, total] = await Promise.all([
+      Post.find(query)
+        .sort({ scrapedAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      Post.countDocuments(query),
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        posts: posts.map(p => ({ ...p, id: p._id })),
+        total,
+        page,
+        totalPages: Math.ceil(total / limit),
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * DELETE /api/admin/posts/:id
+ * Delete a post
+ */
+router.delete('/posts/:id', async (req: AuthRequest, res: Response, next) => {
+  try {
+    const post = await Post.findByIdAndDelete(req.params.id);
+
+    if (!post) {
+      throw new AppError('Post not found', 404);
+    }
+
+    // Remove from cluster if assigned
+    if (post.clusterId) {
+      await Cluster.findByIdAndUpdate(
+        post.clusterId,
+        { $pull: { posts: post._id } }
+      );
+    }
+
+    res.json({
+      success: true,
+      message: 'Post deleted',
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ========================================
+// JOB MANAGEMENT ROUTES
+// ========================================
+
+/**
+ * POST /api/admin/jobs/weekly
+ * Manually trigger weekly job
+ */
+router.post('/jobs/weekly', async (req: AuthRequest, res: Response, next) => {
+  try {
+    const result = await runWeeklyJob();
+
+    res.json({
+      success: true,
+      data: result,
+      message: 'Weekly job completed',
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * POST /api/admin/jobs/publish
+ * Publish all approved clusters
+ */
+router.post('/jobs/publish', async (req: AuthRequest, res: Response, next) => {
+  try {
+    const published = await publishApprovedClusters();
+
+    res.json({
+      success: true,
+      data: { published },
+      message: `${published} clusters published`,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * POST /api/admin/jobs/notify
+ * Send viral notifications
+ */
+router.post('/jobs/notify', async (req: AuthRequest, res: Response, next) => {
+  try {
+    const sent = await sendViralNotifications();
+
+    res.json({
+      success: true,
+      data: { sent },
+      message: `${sent} notifications sent`,
     });
   } catch (error) {
     next(error);

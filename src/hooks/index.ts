@@ -9,4 +9,10 @@ export {
   useViralChats,
   useSearch,
   useSavedPrompts,
+  useClusters,
+  useTrendingClusters,
+  useViralClusters,
+  useEmergingClusters,
+  useClusterById,
+  useClusterPosts,
 } from './useApi';
