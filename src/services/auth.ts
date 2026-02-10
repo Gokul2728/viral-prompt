@@ -26,6 +26,15 @@ const GOOGLE_CLIENT_IDS = {
   webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
 };
 
+// Debug: Log missing credentials
+if (!GOOGLE_CLIENT_IDS.expoClientId && !GOOGLE_CLIENT_IDS.iosClientId && !GOOGLE_CLIENT_IDS.androidClientId) {
+  console.warn(
+    '⚠️  Google OAuth credentials not configured. ' +
+    'See GOOGLE_OAUTH_SETUP.md for setup instructions. ' +
+    'Guest login will still work.'
+  );
+}
+
 export interface AuthState {
   user: User | null;
   token: string | null;

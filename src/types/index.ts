@@ -219,27 +219,8 @@ export interface PaginatedResponse<T> {
   hasMore: boolean;
 }
 
-// Navigation Types
-export type RootStackParamList = {
-  Splash: undefined;
-  Auth: undefined;
-  Main: undefined;
-  PromptDetail: { promptId: string };
-  ViralChatDetail: { chatId: string };
-  Charts: { initialPeriod?: ChartPeriod; initialCategory?: ChartCategory };
-  Search: undefined;
-  Settings: undefined;
-  Profile: undefined;
-  Feedback: { promptId: string };
-  Notifications: undefined;
-};
-
-export type MainTabParamList = {
-  Home: undefined;
-  Trending: undefined;
-  ViralChat: undefined;
-  Profile: undefined;
-};
+// Navigation Types - canonical definitions in @/navigation/types
+// Import from '@/navigation/types' directly for RootStackParamList & MainTabParamList
 
 // Store Types
 export interface AppState {

@@ -19,11 +19,12 @@ import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { Image as ExpoImage } from 'expo-image';
 import * as Clipboard from 'expo-clipboard';
-import * as Linking from 'expo-linking';
+import { openGeminiWithPrompt } from '@/utils/gemini';
 import { useAppStore } from '@/store';
 import { Colors, Spacing, Typography, BorderRadius, Gradients, Shadows } from '@/theme';
 import { Prompt, AITool, Platform } from '@/types';
-import { GlassCard, Button, ReactionButton, Header } from '@/components';
+import { GlassCard, Button, ReactionButton, Header, LoadingState } from '@/components';
+import { usePromptById } from '@/hooks/useApi';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -70,9 +71,14 @@ export const PromptDetailScreen: React.FC<{ navigation: any; route: any }> = ({
   const recordGeneration = useAppStore((state) => state.recordGeneration);
   
   const { promptId } = route.params;
-  const prompt = MOCK_PROMPT; // In real app: fetch by promptId
+  const { data: apiPrompt, loading } = usePromptById(promptId);
+  const prompt = apiPrompt || MOCK_PROMPT;
   
   const [showFullPrompt, setShowFullPrompt] = useState(false);
+  
+  if (loading && !apiPrompt) {
+    return <LoadingState message="Loading prompt..." />;
+  }
   
   const isSaved = savedPromptIds.includes(prompt.id);
   const reactions = userReactions[prompt.id] || [];
@@ -101,8 +107,8 @@ export const PromptDetailScreen: React.FC<{ navigation: any; route: any }> = ({
   
   const handleGenerate = () => {
     recordGeneration(prompt.id);
-    const geminiUrl = `https://gemini.google.com/app?prompt=${encodeURIComponent(prompt.text)}`;
-    Linking.openURL(geminiUrl);
+    // Open native Gemini app with prompt pre-filled
+    openGeminiWithPrompt(prompt.text);
   };
   
   const handleShare = async () => {

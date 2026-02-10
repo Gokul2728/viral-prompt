@@ -16,6 +16,7 @@ import Animated, { FadeInDown, FadeInRight } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppStore } from '@/store';
+import { useTrendingPrompts } from '@/hooks/useApi';
 import { Colors, Spacing, Typography, BorderRadius, Gradients, Shadows } from '@/theme';
 import { Prompt, ChartPeriod, ChartCategory } from '@/types';
 import { Header, GlassCard, PromptCardMini, ChipFilter } from '@/components';
@@ -165,6 +166,12 @@ export const TrendingScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
   const [selectedPeriod, setSelectedPeriod] = useState<ChartPeriod>('weekly');
   const [selectedCategory, setSelectedCategory] = useState<ChartCategory>('trending');
   
+  // Fetch trending prompts from API with offline fallback
+  const { data: apiTrending, loading, refetch } = useTrendingPrompts(20);
+  
+  // Use API data, fall back to mock if empty
+  const chartData = (apiTrending && apiTrending.length > 0) ? apiTrending : MOCK_CHART_DATA;
+  
   const handlePeriodSelect = (id: string) => {
     if (id !== 'all') {
       setSelectedPeriod(id as ChartPeriod);
@@ -192,15 +199,15 @@ export const TrendingScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
           </View>
           <View style={styles.topCardImage}>
             <Animated.Image
-              source={{ uri: MOCK_CHART_DATA[1]?.previewUrl }}
+              source={{ uri: chartData[1]?.previewUrl }}
               style={styles.topCardImageInner}
             />
           </View>
           <Text style={[styles.topCardTitle, { color: colors.textPrimary }]} numberOfLines={2}>
-            {MOCK_CHART_DATA[1]?.text}
+            {chartData[1]?.text}
           </Text>
           <Text style={[styles.topCardStats, { color: colors.textSecondary }]}>
-            ❤️ {formatCount(MOCK_CHART_DATA[1]?.likes || 0)}
+            ❤️ {formatCount(chartData[1]?.likes || 0)}
           </Text>
         </GlassCard>
       </Animated.View>
@@ -221,19 +228,19 @@ export const TrendingScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
             </View>
             <View style={styles.topCardImageFirst}>
               <Animated.Image
-                source={{ uri: MOCK_CHART_DATA[0]?.previewUrl }}
+                source={{ uri: chartData[0]?.previewUrl }}
                 style={styles.topCardImageInner}
               />
             </View>
             <Text style={[styles.topCardTitle, { color: colors.textPrimary }]} numberOfLines={2}>
-              {MOCK_CHART_DATA[0]?.text}
+              {chartData[0]?.text}
             </Text>
             <View style={styles.topCardStatsRow}>
               <Text style={[styles.topCardStats, { color: colors.textSecondary }]}>
-                ❤️ {formatCount(MOCK_CHART_DATA[0]?.likes || 0)}
+                ❤️ {formatCount(chartData[0]?.likes || 0)}
               </Text>
               <Text style={[styles.topCardStats, { color: colors.textSecondary }]}>
-                🔥 {MOCK_CHART_DATA[0]?.trendScore}
+                🔥 {chartData[0]?.trendScore}
               </Text>
             </View>
           </View>
@@ -251,15 +258,15 @@ export const TrendingScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
           </View>
           <View style={styles.topCardImage}>
             <Animated.Image
-              source={{ uri: MOCK_CHART_DATA[2]?.previewUrl }}
+              source={{ uri: chartData[2]?.previewUrl }}
               style={styles.topCardImageInner}
             />
           </View>
           <Text style={[styles.topCardTitle, { color: colors.textPrimary }]} numberOfLines={2}>
-            {MOCK_CHART_DATA[2]?.text}
+            {chartData[2]?.text}
           </Text>
           <Text style={[styles.topCardStats, { color: colors.textSecondary }]}>
-            ❤️ {formatCount(MOCK_CHART_DATA[2]?.likes || 0)}
+            ❤️ {formatCount(chartData[2]?.likes || 0)}
           </Text>
         </GlassCard>
       </Animated.View>
@@ -325,7 +332,7 @@ export const TrendingScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
             Full Rankings
           </Text>
           
-          {MOCK_CHART_DATA.slice(3).map((prompt, index) => (
+          {chartData.slice(3).map((prompt, index) => (
             <Animated.View
               key={prompt.id}
               entering={FadeInRight.delay(index * 100).duration(400)}

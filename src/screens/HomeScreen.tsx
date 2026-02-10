@@ -17,8 +17,9 @@ import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
-import * as Linking from 'expo-linking';
+import { openGeminiWithPrompt } from '@/utils/gemini';
 import { useAppStore } from '@/store';
+import { usePrompts } from '@/hooks/useApi';
 import { Colors, Spacing, Typography, BorderRadius, Gradients } from '@/theme';
 import { Prompt, PromptType, Platform, AITool } from '@/types';
 import {
@@ -27,6 +28,7 @@ import {
   Header,
   OfflineBanner,
   EmptyState,
+  LoadingState,
 } from '@/components';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -155,10 +157,26 @@ export const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  
+  // Fetch prompts from API with offline fallback
+  const {
+    data: apiPrompts,
+    loading: isLoading,
+    error: apiError,
+    refetch,
+    loadMore,
+    hasMore,
+  } = usePrompts({
+    type: selectedTypes.length === 1 ? (selectedTypes[0] as 'image' | 'video') : undefined,
+    platform: selectedPlatforms.length === 1 ? selectedPlatforms[0] : undefined,
+    sort: 'trending',
+  });
+  
+  // Use API data, fall back to mock data if empty
+  const prompts = (apiPrompts && apiPrompts.length > 0) ? apiPrompts : MOCK_PROMPTS;
   
   // Filter prompts based on selections
-  const filteredPrompts = MOCK_PROMPTS.filter((prompt) => {
+  const filteredPrompts = prompts.filter((prompt) => {
     if (selectedTypes.length > 0 && !selectedTypes.includes(prompt.type)) {
       return false;
     }
@@ -173,10 +191,9 @@ export const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    await refetch();
     setRefreshing(false);
-  }, []);
+  }, [refetch]);
   
   const handleTypeSelect = (id: string) => {
     if (id === 'all') {
@@ -210,9 +227,8 @@ export const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   
   const handleGenerate = (prompt: Prompt) => {
     recordGeneration(prompt.id);
-    // Open Gemini with pre-filled prompt
-    const geminiUrl = `https://gemini.google.com/app?prompt=${encodeURIComponent(prompt.text)}`;
-    Linking.openURL(geminiUrl);
+    // Open native Gemini app with prompt pre-filled
+    openGeminiWithPrompt(prompt.text);
   };
   
   const renderHeader = () => (
@@ -312,6 +328,8 @@ export const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           filteredPrompts.length === 0 && styles.emptyListContent,
         ]}
         showsVerticalScrollIndicator={false}
+        onEndReached={loadMore}
+        onEndReachedThreshold={0.5}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}

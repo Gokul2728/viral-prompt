@@ -16,6 +16,7 @@ import {
   ChipFilter,
 } from "@/components";
 import { CacheIndicator } from "@/components/OfflineBanner";
+import { useSavedPrompts } from "@/hooks/useApi";
 import type { Prompt } from "@/types";
 
 interface FilterChip {
@@ -139,16 +140,24 @@ export const SavedScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const { unsavePrompt } = useAppStore();
   const colors = Colors[theme];
 
+  const { data: apiSaved, loading, refetch } = useSavedPrompts();
   const [saved, setSaved] = useState(MOCK_SAVED);
   const [refreshing, setRefreshing] = useState(false);
   const [activeFilter, setActiveFilter] = useState("all");
   const [activeSort, setActiveSort] = useState("recent");
 
+  // Use API data when available
+  React.useEffect(() => {
+    if (apiSaved && apiSaved.length > 0) {
+      setSaved(apiSaved.map(p => ({ ...p, savedAt: p.createdAt, isOffline: false })));
+    }
+  }, [apiSaved]);
+
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    await refetch();
     setRefreshing(false);
-  }, []);
+  }, [refetch]);
 
   const handleUnsave = (id: string) => {
     setSaved((prev) => prev.filter((p) => p.id !== id));
@@ -260,7 +269,7 @@ export const SavedScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     >
       <PromptCard
         prompt={item}
-        onPress={() => navigation.navigate("PromptDetail", { prompt: item })}
+        onPress={() => navigation.navigate("PromptDetail", { promptId: item.id })}
         style="compact"
         onGenerate={function (): void {
           throw new Error("Function not implemented.");

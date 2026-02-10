@@ -30,6 +30,7 @@ import {
   EmptyState,
   ChipFilter,
 } from "@/components";
+import { useSearch } from "@/hooks/useApi";
 import type { Prompt } from "@/types";
 
 const RECENT_SEARCHES = [
@@ -114,6 +115,8 @@ export const SearchScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [hasSearched, setHasSearched] = useState(false);
   const [results, setResults] = useState<Prompt[]>([]);
   const [activeFilter, setActiveFilter] = useState("all");
+  
+  const { search: apiSearch, loading: searchLoading } = useSearch();
 
   const handleSearch = useCallback(async () => {
     if (!searchQuery.trim()) return;
@@ -122,13 +125,14 @@ export const SearchScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     setIsSearching(true);
     setHasSearched(true);
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 800));
-
-    // Filter mock results based on query
-    setResults(MOCK_RESULTS);
+    try {
+      const apiResults = await apiSearch(searchQuery);
+      setResults(apiResults && apiResults.length > 0 ? apiResults : MOCK_RESULTS);
+    } catch {
+      setResults(MOCK_RESULTS);
+    }
     setIsSearching(false);
-  }, [searchQuery]);
+  }, [searchQuery, apiSearch]);
 
   const handleTagPress = (tag: string) => {
     setSearchQuery(tag.replace("#", ""));
@@ -313,7 +317,7 @@ export const SearchScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               <PromptCard
                 prompt={item}
                 onPress={() =>
-                  navigation.navigate("PromptDetail", { prompt: item })
+                  navigation.navigate("PromptDetail", { promptId: item.id })
                 }
                 onGenerate={function (): void {
                   throw new Error("Function not implemented.");

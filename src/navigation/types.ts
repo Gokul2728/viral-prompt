@@ -2,17 +2,20 @@
  * Navigation types for the app
  */
 
-import type { Prompt, ViralChat } from '@/types';
+import type { ChartPeriod, ChartCategory } from '@/types';
 
 export type RootStackParamList = {
   Splash: undefined;
   Auth: undefined;
   Main: undefined;
-  PromptDetail: { prompt: Prompt };
+  PromptDetail: { promptId: string };
+  ViralChatDetail: { chatId: string };
   Feedback: { promptId: string };
   Search: undefined;
   Notifications: undefined;
   Saved: undefined;
+  Charts: { initialPeriod?: ChartPeriod; initialCategory?: ChartCategory };
+  Settings: undefined;
 };
 
 export type MainTabParamList = {

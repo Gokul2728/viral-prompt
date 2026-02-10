@@ -11,6 +11,7 @@ import {
   SplashScreen,
   AuthScreen,
   PromptDetailScreen,
+  ViralChatDetailScreen,
   FeedbackScreen,
   SearchScreen,
   NotificationsScreen,
@@ -73,6 +74,14 @@ export const RootNavigator: React.FC = () => {
             <Stack.Screen
               name="PromptDetail"
               component={PromptDetailScreen}
+              options={{
+                animation: 'slide_from_right',
+                presentation: 'card',
+              }}
+            />
+            <Stack.Screen
+              name="ViralChatDetail"
+              component={ViralChatDetailScreen}
               options={{
                 animation: 'slide_from_right',
                 presentation: 'card',

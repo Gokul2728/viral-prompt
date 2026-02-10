@@ -11,12 +11,14 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
+  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useAppStore } from '@/store';
 import { Colors, Spacing, Typography, BorderRadius } from '@/theme';
 import { Header, GlassCard, Button, FeedbackSlider } from '@/components';
+import { apiService } from '@/services/api';
 
 export const FeedbackScreen: React.FC<{ navigation: any; route: any }> = ({
   navigation,
@@ -59,20 +61,26 @@ export const FeedbackScreen: React.FC<{ navigation: any; route: any }> = ({
   const handleSubmit = async () => {
     setIsSubmitting(true);
     
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    
-    // TODO: Send feedback to backend
-    console.log('Feedback:', {
-      promptId: route.params.promptId,
-      usefulness,
-      viralPotential,
-      quality,
-      comment,
-    });
-    
-    setIsSubmitting(false);
-    navigation.goBack();
+    try {
+      const result = await apiService.submitFeedback(route.params.promptId, {
+        usefulness,
+        viralPotential,
+        quality,
+        comment,
+      });
+      
+      if (result.success) {
+        Alert.alert('Thank you!', 'Your feedback has been submitted.', [
+          { text: 'OK', onPress: () => navigation.goBack() },
+        ]);
+      } else {
+        Alert.alert('Error', 'Could not submit feedback. Please try again.');
+      }
+    } catch {
+      Alert.alert('Error', 'Network error. Please try again later.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
   
   return (

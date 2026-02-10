@@ -7,6 +7,7 @@ export { AuthScreen } from './AuthScreen';
 export { HomeScreen } from './HomeScreen';
 export { TrendingScreen } from './TrendingScreen';
 export { ViralChatScreen } from './ViralChatScreen';
+export { ViralChatDetailScreen } from './ViralChatDetailScreen';
 export { ProfileScreen } from './ProfileScreen';
 export { PromptDetailScreen } from './PromptDetailScreen';
 export { FeedbackScreen } from './FeedbackScreen';

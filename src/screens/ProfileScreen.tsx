@@ -249,7 +249,7 @@ export const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
         {/* Saved Prompts */}
         <Pressable
           style={[styles.settingItem, { borderBottomColor: colors.glassBorder }]}
-          onPress={() => navigation.navigate('SavedPrompts')}
+          onPress={() => navigation.navigate('Saved')}
         >
           <View style={styles.settingLeft}>
             <View style={[styles.settingIcon, { backgroundColor: `${colors.like}20` }]}>

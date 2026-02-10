@@ -138,12 +138,20 @@ viral-prompt/
    npm install
    ```
 
-2. **Start Expo**
+2. **Configure Google OAuth**
+   - See [GOOGLE_OAUTH_SETUP.md](./GOOGLE_OAUTH_SETUP.md) for detailed instructions
+   - Copy `.env.example` to `.env.local` and add your credentials:
+     ```bash
+     cp .env.example .env.local
+     # Edit .env.local with your Google OAuth client IDs
+     ```
+
+3. **Start Expo**
    ```bash
-   npx expo start
+   npx expo start --tunnel
    ```
 
-3. **Run on device/simulator**
+4. **Run on device/simulator**
    - Press `i` for iOS simulator
    - Press `a` for Android emulator
    - Scan QR code with Expo Go app
@@ -258,6 +266,29 @@ FIREBASE_CLIENT_EMAIL=your-email
 ### Typography
 - Font: System default (SF Pro on iOS, Roboto on Android)
 - Sizes: xs (10), sm (12), md (14), lg (16), xl (18), 2xl (24), 3xl (32)
+
+## Troubleshooting 🔧
+
+### "Access blocked: Authorization Error" on Google Login
+**Solution**: Google OAuth credentials are not configured.
+1. Follow the setup in [GOOGLE_OAUTH_SETUP.md](./GOOGLE_OAUTH_SETUP.md)
+2. Create `.env.local` with your OAuth credentials
+3. Restart the app with `npx expo start --tunnel`
+
+### "Network request failed" / API errors
+1. Ensure backend is running: `cd backend && npm run dev`
+2. Check backend is accessible at `https://dev-api-test.x1.stage.hostnmeet.com/api`
+3. Verify environment variable `EXPO_PUBLIC_API_URL` is correct
+
+### Expo build fails
+1. Clear cache: `expo start --clear`
+2. Reinstall dependencies: `rm -rf node_modules && npm install`
+3. Check Node.js version: `node --version` (should be 18+)
+
+### Offline mode not working
+1. Prompts are cached locally in SQLite after first fetch
+2. Close and reopen app to test offline access
+3. Check device storage permissions
 
 ## Screenshots 📱
 

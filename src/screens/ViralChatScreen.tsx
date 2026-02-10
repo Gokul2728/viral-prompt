@@ -17,6 +17,8 @@ import { useAppStore } from '@/store';
 import { Colors, Spacing, Typography, BorderRadius } from '@/theme';
 import { ViralChat } from '@/types';
 import { Header, ViralChatCard, ViralChatCardMini, GlassCard, ChipFilter } from '@/components';
+import { useViralChats } from '@/hooks/useApi';
+import { openGeminiWithPrompt } from '@/utils/gemini';
 
 // Mock data
 const MOCK_VIRAL_CHATS: ViralChat[] = [
@@ -127,15 +129,18 @@ export const ViralChatScreen: React.FC<{ navigation: any }> = ({ navigation }) =
   const [refreshing, setRefreshing] = useState(false);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   
-  const filteredChats = selectedCategories.length > 0
-    ? MOCK_VIRAL_CHATS.filter((chat) => selectedCategories.includes(chat.category))
-    : MOCK_VIRAL_CHATS;
+  const { data: apiChats, loading, refetch } = useViralChats();
+  const allChats = (apiChats && apiChats.length > 0) ? apiChats : MOCK_VIRAL_CHATS;
   
-  const viralChats = MOCK_VIRAL_CHATS.filter((chat) => chat.isViral);
+  const filteredChats = selectedCategories.length > 0
+    ? allChats.filter((chat) => selectedCategories.includes(chat.category))
+    : allChats;
+  
+  const viralChats = allChats.filter((chat) => chat.isViral);
   
   const handleRefresh = async () => {
     setRefreshing(true);
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    await refetch();
     setRefreshing(false);
   };
   
