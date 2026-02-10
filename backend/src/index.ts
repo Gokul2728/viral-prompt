@@ -61,6 +61,10 @@ app.all("/*", function (req, res, next) {
   }
 });
 
+app.get("/", (req, res) => {
+  res.send("ROOT OK");
+});
+
 // Rate limiting
 const limiter = rateLimit({
   windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || "900000"), // 15 minutes
