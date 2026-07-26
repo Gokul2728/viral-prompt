@@ -9,6 +9,8 @@
     "start": "node dist/index.js",
     "lint": "eslint src --ext .ts",
     "seed": "ts-node src/scripts/seed.ts",
+    "test:prompts": "ts-node src/scripts/testPromptFetch.ts",
+    "test:validation": "ts-node src/scripts/testPromptValidation.ts",
     "job:weekly": "ts-node -e \"require('./src/jobs').runWeeklyJob()\"",
     "outDir": "dist"
   },

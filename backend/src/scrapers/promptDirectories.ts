@@ -120,77 +120,191 @@ export async function fetchCivitAIImages(
 }
 
 /**
+ * Fetch trending prompts from PromptHero API (fallback method)
+ */
+async function fetchPromptHeroAPI(
+  model: string,
+  limit: number = 10,
+): Promise<PromptEntry[]> {
+  const results: PromptEntry[] = [];
+
+  try {
+    // Try to fetch from PromptHero's API endpoint
+    const response = await axios
+      .get(`https://prompthero.com/api/prompts?model=${model}&limit=${limit}`, {
+        headers: {
+          "User-Agent": USER_AGENT,
+        },
+        timeout: 10000,
+      })
+      .catch(() => null);
+
+    if (response?.data?.prompts) {
+      for (const item of response.data.prompts) {
+        results.push({
+          id: `prompthero_${model}_${item.id || Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          prompt: item.prompt || item.text || "",
+          imageUrl: item.image || item.imageUrl || "",
+          thumbnailUrl: item.thumbnail || item.image || "",
+          model: model,
+          likes: item.likes || item.reactions || 0,
+          source: "prompthero",
+          tags: extractTagsFromPrompt(item.prompt || ""),
+        });
+      }
+    }
+  } catch (error) {
+    // API not available, will use web scraping instead
+  }
+
+  return results;
+}
+
+/**
  * Fetch trending prompts from PromptHero using web scraping
  */
 export async function fetchPromptHeroPrompts(
   limit: number = 50,
 ): Promise<PromptEntry[]> {
+  const models = [
+    "fashion",
+    "midjourney",
+    // "chatgpt-image",
+    // "nano-banana",
+    // "stable-diffusion",
+    // "flux",
+    // "sora",
+    // "veo",
+  ];
   const results: PromptEntry[] = [];
   let browser: Browser | null = null;
-
+  const limitPerModel = Math.ceil(limit / models.length);
   try {
     browser = await chromium.launch({ headless: true });
-    const page = await browser.newPage({
-      userAgent: USER_AGENT,
-    });
 
-    // Navigate to trending page
-    await page.goto("https://prompthero.com/models/midjourney", {
-      waitUntil: "networkidle",
-      timeout: 30000,
-    });
-
-    await page.waitForTimeout(2000);
-
-    // Scroll to load more content
-    for (let i = 0; i < 3; i++) {
-      await page.evaluate("window.scrollBy(0, window.innerHeight)");
-      await page.waitForTimeout(1500);
-    }
-
-    // Extract prompt cards
-    const cards = await page.$$('.prompt-card, [class*="PromptCard"]');
-
-    for (const card of cards.slice(0, limit)) {
+    for (const model of models) {
+      let page: Page | null = null;
       try {
-        const promptText = await card
-          .$eval(
-            '.prompt-text, [class*="prompt"]',
-            (el) => el.textContent?.trim() || "",
-          )
-          .catch(() => "");
+        console.log(`Fetching prompts from PromptHero model: ${model}`);
 
-        const imageUrl = await card
-          .$eval("img", (el) => el.getAttribute("src") || "")
-          .catch(() => "");
+        page = await browser.newPage({
+          userAgent: USER_AGENT,
+        });
 
-        const likesText = await card
-          .$eval(
-            '[class*="likes"], [class*="heart"]',
-            (el) => el.textContent?.trim() || "0",
-          )
-          .catch(() => "0");
+        // Navigate to trending page
+        try {
+          await page.goto(`https://prompthero.com/${model}-prompts`, {
+            waitUntil: "networkidle",
+            timeout: 20000,
+          });
+        } catch {
+          console.warn(
+            `⚠️  Timeout loading ${model}, continuing with partial content`,
+          );
+        }
 
-        if (promptText && imageUrl) {
+        await page.waitForTimeout(1500);
+
+        // Scroll to load lazy-loaded content
+        for (let i = 0; i < 3; i++) {
+          await page.evaluate("window.scrollBy(0, window.innerHeight)");
+          await page.waitForTimeout(1000);
+        }
+
+        // Extract prompts from prompt links
+        const cards = await page
+          .$$eval('a[href*="/prompt/"]', (elements) => {
+            return elements
+              .map((el: any) => {
+                try {
+                  // Get the image element
+                  const img = el.querySelector("img");
+                  if (!img) return null;
+
+                  const imageUrl = img.getAttribute("src") || "";
+                  const promptText =
+                    img.getAttribute("aria-label") ||
+                    img.getAttribute("alt") ||
+                    "";
+
+                  // Filter out invalid entries
+                  if (
+                    !imageUrl ||
+                    imageUrl.includes("tracking") ||
+                    promptText.length < 10
+                  ) {
+                    return null;
+                  }
+
+                  // Try to extract likes
+                  const likesEl = el.querySelector(
+                    "[class*='like'], [class*='heart']",
+                  );
+                  const likes = parseInt(
+                    likesEl?.textContent?.replace(/[^0-9]/g, "") || "0",
+                  );
+
+                  return {
+                    prompt: promptText.slice(0, 500),
+                    imageUrl: imageUrl,
+                    likes: likes,
+                  };
+                } catch {
+                  return null;
+                }
+              })
+              .filter(
+                (item: any): item is NonNullable<typeof item> =>
+                  item !== null && item.imageUrl.length > 0,
+              );
+          })
+          .catch(() => []);
+
+        // Convert _next/image URLs and add to results
+        for (const card of cards.slice(0, limitPerModel)) {
+          let imageUrl = card.imageUrl;
+          if (imageUrl.includes("_next/image")) {
+            try {
+              const url = new URL(imageUrl, "https://prompthero.com");
+              const originalUrl = url.searchParams.get("url");
+              if (originalUrl) {
+                imageUrl = decodeURIComponent(originalUrl);
+              }
+            } catch {
+              // Keep original URL if parsing fails
+            }
+          }
+
           results.push({
-            id: `prompthero_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-            prompt: promptText,
-            imageUrl,
+            id: `prompthero_${model}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            prompt: card.prompt || "Untitled",
+            imageUrl: imageUrl,
             thumbnailUrl: imageUrl,
-            likes: parseInt(likesText.replace(/[^0-9]/g, "")) || 0,
+            model: model,
+            likes: card.likes,
             source: "prompthero",
-            tags: extractTagsFromPrompt(promptText),
+            tags: extractTagsFromPrompt(card.prompt),
           });
         }
+
+        const count = results.filter((r) => r.model === model).length;
+        console.log(`✓ Fetched ${count} prompts from ${model}`);
       } catch (error) {
-        // Skip failed cards
+        console.warn(
+          `⚠️  Error fetching PromptHero model ${model}:`,
+          error instanceof Error ? error.message : String(error),
+        );
+      } finally {
+        if (page) {
+          await page.close().catch(() => {});
+        }
       }
     }
   } catch (error) {
-    console.error("Error fetching PromptHero prompts:", error);
+    console.error("Error initializing PromptHero scraper:", error);
   } finally {
     if (browser) {
-      await browser.close();
+      await browser.close().catch(() => {});
     }
   }
 
@@ -264,13 +378,19 @@ function extractTagsFromPrompt(prompt: string): string[] {
 export async function fetchAllPromptSources(
   limit: number = 30,
 ): Promise<PromptEntry[]> {
-  const [lexica, civitai, prompthero] = await Promise.all([
-    fetchLexicaPrompts("", limit),
+  // const [lexica, civitai, prompthero] = await Promise.all([
+  //   fetchLexicaPrompts("", limit),
+  //   fetchCivitAIImages(limit, "Most Reactions", "Week"),
+  //   fetchPromptHeroPrompts(limit),
+  // ]);
+  const [civitai, prompthero] = await Promise.all([
+    // fetchCivitAIImages(limit, "Newest", "Week"),
     fetchCivitAIImages(limit, "Most Reactions", "Week"),
     fetchPromptHeroPrompts(limit),
   ]);
 
-  return [...lexica, ...civitai, ...prompthero];
+  // return [...lexica, ...civitai, ...prompthero];
+  return [...civitai, ...prompthero];
 }
 
 /**

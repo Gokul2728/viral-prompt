@@ -27,11 +27,15 @@ const GOOGLE_CLIENT_IDS = {
 };
 
 // Debug: Log missing credentials
-if (!GOOGLE_CLIENT_IDS.expoClientId && !GOOGLE_CLIENT_IDS.iosClientId && !GOOGLE_CLIENT_IDS.androidClientId) {
+if (
+  !GOOGLE_CLIENT_IDS.expoClientId &&
+  !GOOGLE_CLIENT_IDS.iosClientId &&
+  !GOOGLE_CLIENT_IDS.androidClientId
+) {
   console.warn(
-    '⚠️  Google OAuth credentials not configured. ' +
-    'See GOOGLE_OAUTH_SETUP.md for setup instructions. ' +
-    'Guest login will still work.'
+    "⚠️  Google OAuth credentials not configured. " +
+      "See GOOGLE_OAUTH_SETUP.md for setup instructions. " +
+      "Guest login will still work.",
   );
 }
 
@@ -105,6 +109,7 @@ class AuthService {
       androidClientId: GOOGLE_CLIENT_IDS.androidClientId,
       webClientId: GOOGLE_CLIENT_IDS.webClientId,
       scopes: ["profile", "email"],
+      redirectUri: "https://auth.expo.io/@gokulat8/viral-prompt",
     });
   }
 

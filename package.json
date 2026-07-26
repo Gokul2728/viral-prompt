@@ -9,7 +9,9 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "backend": "cd backend && npm start",
-    "backend:dev": "cd backend && npm run dev"
+    "backend:dev": "cd backend && npm run dev",
+    "check-oauth": "node scripts/check-oauth.js",
+    "get-android-sha1": "pwsh scripts/get-android-sha1.ps1"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
